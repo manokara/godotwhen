@@ -1,0 +1,69 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: #2070ab;
+}
+
+img {
+    display: block;
+}
+
+.gobot {
+    margin-bottom: 16px;
+}
+
+.center-horizontal {
+    position: relative;
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+
+#box {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    color: white;
+    text-align: center;
+}
+
+.header {
+    display: block;
+    font-size: 20pt;
+    font-weight: bold;
+    margin-bottom: 32px;
+}
+
+.content {
+    margin-bottom: 8px;
+    line-height: 24pt;
+}
+
+.tag {
+    font-weight: bold;
+    padding: 4px;
+}
+.tiny-header {
+    display: block;
+    font-weight: bold;
+    font-size: 10pt;
+    margin-bottom: 6px;
+}
+
+.tag-green {
+    background: #009000;
+}
+.tag-red {
+    background: #911;
+}
+
+.release-date {
+    display: inline-block;
+    margin-top: 12px;
+    border-radius: 12px;
+    padding: 16px;
+    background: white;
+    color: black;
+    font-size: 24pt;
+}
