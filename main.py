@@ -7,28 +7,54 @@ import datetime
 import threading
 import atexit
 
-POOL_TIME = 60
+POOL_TIME = 5
 INFINITY = "∞"
 API_URL = "https://api.github.com/repos/godotengine/godot/milestones/4"
 DATE_FORMAT = "%B %d %Y"
-MAX_COUNT = 6
+MAX_COUNT = 30
+MOCK_BUFFER = [
+    (342, 3183),
+    (346, 3192),
+    (330, 3196),
+    (360, 3207),
+    (355, 3218),
+    (360, 3230)
+]
 
-control_run = True
-control_thread = None
-update_thread = threading.Thread()
+is_mock = True
+mock_index = 0
+update_run = True
+update_timer = 0
+update_thread = None
 thread_lock = threading.Lock()
 startup_date = datetime.date.today()
 count_buffer = []
 last_prediction = {
     "timestamp": startup_date,
     "issue_count": [0, 0],
-    "hours": 0,
+    "days": 0,
     "date": INFINITY
 }
+__time = ["seconds", "minutes", "hours", "days"]
 
 
 with open("index.mustache") as f:
     template = f.read()
+
+def fmt_time(seconds):
+    result = seconds
+    level = 0
+
+    while result//60:
+        if level == 2:
+            result //= 24
+        elif level == 3:
+            result //= 30
+        else:
+            result //= 60
+        level += 1
+
+    return "{} {}".format(result, __time[level])
 
 def get_milestone_data():
     try:
@@ -39,71 +65,80 @@ def get_milestone_data():
 
     return None
 
-def calculate_hours():
-    last_group = count_buffer[1]
-    diffs = []
-    deltas = []
-    hours = 0
+def calculate_days():
+    last_group = count_buffer[0]
+    deltas = [[], []]
 
     for cg in count_buffer[1:]:
-        op = cg[0]-last_group[0]
-        closed = cg[1]-last_group[1]
-        diffs.append([op, closed])
-        deltas.append(closed*2-op) # Closed weighs 2
-        last_group = cg
+        deltas[0].append(abs(cg[0]-last_group[0]))
+        deltas[1].append(abs(cg[1]-last_group[1]))
 
-    avg = int(sum(deltas)/len(count_buffer))
-    open_avg = int(sum([x[0] for x in diffs])/len(diffs))
-    closed_avg = int(sum([x[1] for x in diffs])/len(diffs))
-    print("Averages: {}, {}, {}".format(avg, open_avg, closed_avg))
-    date = last_prediction["timestamp"]+datetime.timedelta(hours=hours)
-    last_prediction["issue_count"] = [open_avg, closed_avg]
-    last_prediction["hours"] = hours
-    last_prediction["date"] = date.strftime(DATE_FORMAT)
+    openi = int(sum(deltas[0])/len(count_buffer))
+    closedi = int(sum(deltas[1])/len(count_buffer))
+    openclose = closedi-openi
+    days = int((count_buffer[-1][0]+openclose)/openclose)
+    print("Diffs: {}, {}, {}".format(openclose, openi, closedi))
+    print("Days: {}".format(days))
+    
+    if days > 0:
+        date = last_prediction["timestamp"]+datetime.timedelta(days=days)
+        date = date.strftime(DATE_FORMAT)
+    else:
+        date = INFINITY
+
+    last_prediction["issue_count"] = [openi, closedi]
+    last_prediction["days"] = days
+    last_prediction["date"] = date
 
 def create_app():
     app = flask.Flask(__name__)
 
-    def start_thread():
-        global update_thread
-        update_thread = threading.Timer(POOL_TIME, update_prediction, ())
-        update_thread.start()
-        print("Start update thread")
-
     def stop_thread():
-        global update_thread, control_thread
-        control_run = False
-        update_thread.cancel()
-        control_thread.join()
-        print("Stopped threads")
+        global update_thread
+        update_run = False
+        print("Stopped update thread")
 
     def thread_control():
-        global update_thread, control_run
-        print("Start control thread")
-        while control_run:
-            if not update_thread.is_alive():
-                start_thread()
-        print("End control thread")
+        global update_thread, update_timer
+
+        print("Start update thread")
+        while update_run:
+            if update_timer == 0:
+                update_prediction()
+
+            time.sleep(1)
+            update_timer += 1
+            if update_timer == POOL_TIME:
+                update_timer = 0
+
+        print("End update thread")
 
     def update_prediction():
         global update_thread, thread_lock, last_prediction, count_buffer
+        global mock_index
 
-        with thread_lock:
-            print("Updating prediction")
-            timestamp = datetime.datetime.utcfromtimestamp(time.time())
+        print("Updating prediction")
+        timestamp = datetime.datetime.utcfromtimestamp(time.time())
+        if is_mock:
+            print("Mock")
+            milestone = {"open_issues": MOCK_BUFFER[mock_index][0], "closed_issues": MOCK_BUFFER[mock_index][1]}
+            mock_index += 1
+            if mock_index == len(MOCK_BUFFER):
+                mock_index = 0
+        else:
             milestone = get_milestone_data()
             if milestone is None: return
-            issue_count = milestone["open_issues"], milestone["closed_issues"]
-            print("Got milestone")
+        issue_count = milestone["open_issues"], milestone["closed_issues"]
+        print("Got milestone data: {}".format(issue_count))
 
-            count_buffer.append(issue_count)
-            if len(count_buffer) > MAX_COUNT:
-                count_buffer.pop(0)
+        count_buffer.append(issue_count)
+        if len(count_buffer) > MAX_COUNT:
+            count_buffer.pop(0)
 
-            print("Buffer size: {}".format(len(count_buffer)))
-            last_prediction["timestamp"] = timestamp
-            if len(count_buffer) >= 2:
-                calculate_hours()
+        print("Buffer size: {}".format(len(count_buffer)))
+        last_prediction["timestamp"] = timestamp
+        if len(count_buffer) >= 2:
+            calculate_days()
 
     @app.route("/")
     def hello():
@@ -111,7 +146,7 @@ def create_app():
         ctx = {
             "open_issues": last_prediction["issue_count"][0],
             "closed_issues": last_prediction["issue_count"][1],
-            "hours": last_prediction["hours"],
+            "days": last_prediction["days"],
             "date": last_prediction["date"]
         }
 
@@ -119,11 +154,11 @@ def create_app():
 
     @app.route("/date")
     def date():
-        return ctx["date"]
+        return last_prediction["date"]
 
-    global control_thread, update_thread
-    control_thread = threading.Thread(target=thread_control)
-    control_thread.start()
+    global update_thread
+    update_thread = threading.Thread(target=thread_control)
+    update_thread.start()
     atexit.register(stop_thread)
 
     return app
