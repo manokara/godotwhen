@@ -2,6 +2,7 @@ import pystache as mustache
 import urllib.request as urlreq
 import flask
 import json
+from random import random
 import time
 import datetime
 import threading
@@ -19,6 +20,23 @@ MOCK_BUFFER = [
     (360, 3207),
     (355, 3218),
     (360, 3230)
+]
+MOODS = [
+    "gdthinking",
+    "gdangry",
+    "thonking",
+]
+# First index is mood
+TITLES = [
+    (0, "When Will Godot 3 Release?"),
+    (0, "Godot 3?"),
+    (0, "How Long To Wait For Godot?"),
+    (1, "GIVE ME GODOT 3!!!11"),
+    (1, "GODOT. 3. WHEN."),
+    (1, "I Want Godot 3!"),
+    (2, "Will Godot 3 Ever Be Finished?"),
+    (2, "I Think Godot 3 Is An Illusion"),
+    (2, "Godot 3? What's That?"),
 ]
 
 is_mock = True
@@ -40,6 +58,8 @@ __time = ["seconds", "minutes", "hours", "days"]
 
 with open("index.mustache") as f:
     template = f.read()
+
+#==========================================================
 
 def fmt_time(seconds):
     result = seconds
@@ -142,8 +162,13 @@ def create_app():
 
     @app.route("/")
     def hello():
-        global template
+        title = TITLES[int(random()*len(TITLES)-1)]
+        mood = MOODS[title[0]]
+        title = title[1]
+
         ctx = {
+            "mood": mood,
+            "title": title,
             "open_issues": last_prediction["issue_count"][0],
             "closed_issues": last_prediction["issue_count"][1],
             "days": last_prediction["days"],

@@ -6,6 +6,7 @@ body {
 
 img {
     display: block;
+    height: 120px;
 }
 
 .gobot {
@@ -60,7 +61,7 @@ img {
 
 .release-date {
     display: inline-block;
-    margin-top: 12px;
+    margin-top: 20px;
     border-radius: 12px;
     padding: 16px;
     background: white;
