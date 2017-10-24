@@ -95,7 +95,7 @@ def calculate_days():
 
     openi = int(sum(deltas[0])/len(count_buffer))
     closedi = int(sum(deltas[1])/len(count_buffer))
-    openclose = closedi-openi
+    openclose = abs(closedi-openi)
     days = int((count_buffer[-1][0]+openclose)/openclose)
     print("Diffs: {}, {}, {}".format(openclose, openi, closedi))
     print("Days: {}".format(days))
@@ -112,11 +112,6 @@ def calculate_days():
 
 def create_app():
     app = flask.Flask(__name__)
-
-    def stop_thread():
-        global update_thread
-        update_run = False
-        print("Stopped update thread")
 
     def thread_control():
         global update_thread, update_timer
@@ -184,8 +179,10 @@ def create_app():
     global update_thread
     update_thread = threading.Thread(target=thread_control)
     update_thread.start()
-    atexit.register(stop_thread)
 
     return app
 
 create_app().run()
+print("Finished run")
+update_run = False
+update_thread.join()
