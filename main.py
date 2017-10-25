@@ -8,11 +8,14 @@ import datetime
 import threading
 import atexit
 
-POOL_TIME = 5
+MINUTE = 60
+HOUR = 60*MINUTE
+DAY = HOUR*24
+POOL_TIME = 1*HOUR
 INFINITY = "∞"
 API_URL = "https://api.github.com/repos/godotengine/godot/milestones/4"
 DATE_FORMAT = "%B %d %Y"
-MAX_COUNT = 30
+MAX_COUNT = 6
 MOCK_BUFFER = [
     (342, 3183),
     (346, 3192),
@@ -39,8 +42,9 @@ TITLES = [
     (2, "Godot 3? What's That?"),
 ]
 
-is_mock = True
+is_mock = False
 mock_index = 0
+ut_buffer = []
 update_run = True
 update_timer = 0
 update_thread = None
@@ -50,7 +54,7 @@ count_buffer = []
 last_prediction = {
     "timestamp": startup_date,
     "issue_count": [0, 0],
-    "days": 0,
+    "predict": INFINITY,
     "date": INFINITY
 }
 __time = ["seconds", "minutes", "hours", "days"]
@@ -63,18 +67,18 @@ with open("index.mustache") as f:
 
 def fmt_time(seconds):
     result = seconds
+    lt = [60, 60, 24, 30]
     level = 0
 
-    while result//60:
-        if level == 2:
-            result //= 24
-        elif level == 3:
-            result //= 30
-        else:
-            result //= 60
+    while result//lt[level]:
+        result //= lt[level]
         level += 1
 
-    return "{} {}".format(result, __time[level])
+    unit = __time[level]
+    if result ==1:
+        unit = unit[0:-1]
+
+    return "{} {}".format(result, unit) 
 
 def get_milestone_data():
     try:
@@ -92,22 +96,25 @@ def calculate_days():
     for cg in count_buffer[1:]:
         deltas[0].append(abs(cg[0]-last_group[0]))
         deltas[1].append(abs(cg[1]-last_group[1]))
+        last_group = cg
 
     openi = int(sum(deltas[0])/len(count_buffer))
     closedi = int(sum(deltas[1])/len(count_buffer))
     openclose = abs(closedi-openi)
-    days = int((count_buffer[-1][0]+openclose)/openclose)
+    if openclose > 0:
+        predict = int((count_buffer[-1][0]+openclose)/openclose)/POOL_TIME
+    else: predict = 0
     print("Diffs: {}, {}, {}".format(openclose, openi, closedi))
-    print("Days: {}".format(days))
+    print("Time: {}".format(fmt_time(predict)))
     
-    if days > 0:
-        date = last_prediction["timestamp"]+datetime.timedelta(days=days)
+    if predict > 0:
+        date = last_prediction["timestamp"]+datetime.timedelta(seconds=predict)
         date = date.strftime(DATE_FORMAT)
     else:
         date = INFINITY
 
     last_prediction["issue_count"] = [openi, closedi]
-    last_prediction["days"] = days
+    last_prediction["predict"] = fmt_time(predict) if predict > 0 else INFINITY
     last_prediction["date"] = date
 
 def create_app():
@@ -133,6 +140,8 @@ def create_app():
         global mock_index
 
         print("Updating prediction")
+        print("===================================")
+
         timestamp = datetime.datetime.utcfromtimestamp(time.time())
         if is_mock:
             print("Mock")
@@ -155,18 +164,22 @@ def create_app():
         if len(count_buffer) >= 2:
             calculate_days()
 
+        print("===================================")
+
     @app.route("/")
     def hello():
-        title = TITLES[int(random()*len(TITLES)-1)]
+        k = int(random()*len(TITLES)-1)
+        title = TITLES[k]
         mood = MOODS[title[0]]
         title = title[1]
 
         ctx = {
             "mood": mood,
             "title": title,
+            "timespan": fmt_time(POOL_TIME),
             "open_issues": last_prediction["issue_count"][0],
             "closed_issues": last_prediction["issue_count"][1],
-            "days": last_prediction["days"],
+            "predict": last_prediction["predict"],
             "date": last_prediction["date"]
         }
 
@@ -182,6 +195,8 @@ def create_app():
 
     return app
 
+print("Buffer capacity: {}".format(MAX_COUNT))
+print("Interval: {}".format(fmt_time(POOL_TIME)))
 create_app().run()
 print("Finished run")
 update_run = False
