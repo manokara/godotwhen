@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import pystache as mustache
 import urllib.request as urlreq
 import flask
@@ -11,11 +12,11 @@ import atexit
 MINUTE = 60
 HOUR = 60*MINUTE
 DAY = HOUR*24
-POOL_TIME = 1*HOUR
+POOL_TIME = 6*HOUR
 INFINITY = "∞"
 API_URL = "https://api.github.com/repos/godotengine/godot/milestones/4"
 DATE_FORMAT = "%B %d %Y"
-MAX_COUNT = 6
+MAX_COUNT = 4
 MOCK_BUFFER = [
     (342, 3183),
     (346, 3192),
@@ -74,8 +75,9 @@ def fmt_time(seconds):
         result //= lt[level]
         level += 1
 
+    result = int(result)
     unit = __time[level]
-    if result ==1:
+    if result == 1:
         unit = unit[0:-1]
 
     return "{} {}".format(result, unit) 
@@ -89,7 +91,7 @@ def get_milestone_data():
 
     return None
 
-def calculate_days():
+def calculate_time():
     last_group = count_buffer[0]
     deltas = [[], []]
 
@@ -102,7 +104,7 @@ def calculate_days():
     closedi = int(sum(deltas[1])/len(count_buffer))
     openclose = abs(closedi-openi)
     if openclose > 0:
-        predict = int((count_buffer[-1][0]+openclose)/openclose)/POOL_TIME
+        predict = int((count_buffer[-1][0]+openclose)/openclose)*POOL_TIME
     else: predict = 0
     print("Diffs: {}, {}, {}".format(openclose, openi, closedi))
     print("Time: {}".format(fmt_time(predict)))
@@ -162,7 +164,7 @@ def create_app():
         print("Buffer size: {}".format(len(count_buffer)))
         last_prediction["timestamp"] = timestamp
         if len(count_buffer) >= 2:
-            calculate_days()
+            calculate_time()
 
         print("===================================")
 
