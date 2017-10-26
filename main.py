@@ -18,12 +18,12 @@ DATE_FORMAT = "%B %d %Y"
 MAX_COUNT = 4
 MOCK = False
 MOCK_BUFFER = [
-    (342, 3183),
-    (346, 3192),
-    (330, 3196),
-    (360, 3207),
-    (355, 3218),
-    (360, 3230)
+    (349, 3214),
+    (350, 3216),
+    (348, 3218),
+    (346, 3220),
+    (350, 3222),
+    (352, 3224)
 ]
 MOODS = [
     "gdthinking",
@@ -56,7 +56,7 @@ last_prediction = {
     "predict": INFINITY,
     "date": INFINITY
 }
-__time = ["seconds", "minutes", "hours", "days"]
+__time = ["seconds", "minutes", "hours", "days", "months"]
 
 
 with open("index.mustache") as f:
@@ -78,11 +78,14 @@ def fmt_time(seconds):
     lt = [60, 60, 24, 30]
     level = 0
 
-    while result//lt[level]:
-        result //= lt[level]
-        level += 1
+    try:
+        while result//lt[level]:
+            result /= lt[level]
+            level += 1
+    except IndexError:
+        pass
 
-    result = int(result)
+    result = round(result)
     unit = __time[level]
     if result == 1:
         unit = unit[0:-1]
@@ -130,7 +133,7 @@ def create_app():
     app = flask.Flask(__name__)
 
     def thread_control():
-        global update_thread, update_timer
+        global update_timer
 
         print("Start update thread")
         while update_run:
@@ -139,13 +142,13 @@ def create_app():
 
             time.sleep(1)
             update_timer += 1
-            if update_timer == POOL_TIME:
+            if update_timer == (5 if MOCK else POOL_TIME):
                 update_timer = 0
 
         print("End update thread")
 
     def update_prediction():
-        global update_thread, thread_lock, last_prediction, count_buffer
+        global thread_lock, last_prediction, count_buffer
         global mock_index
 
         print("Updating prediction")
