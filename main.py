@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 import pystache as mustache
-import urllib.request as urlreq
+from urllib.request import urlopen
 import flask
 import json
 from random import random
 import time
 import datetime
 import threading
-import atexit
 
 MINUTE = 60
 HOUR = 60*MINUTE
@@ -92,8 +91,8 @@ def fmt_time(seconds):
 
 def get_milestone_data():
     try:
-        with urlreq.urlopen(API_URL) as response:
-            return json.loads(response.read())
+        with urlopen(API_URL) as response:
+            return json.loads(response.read().decode("utf8"))
     except Exception as e:
         print("Get milestone error: {}".format(str(e)))
 
