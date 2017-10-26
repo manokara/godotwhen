@@ -17,6 +17,7 @@ INFINITY = "∞"
 API_URL = "https://api.github.com/repos/godotengine/godot/milestones/4"
 DATE_FORMAT = "%B %d %Y"
 MAX_COUNT = 4
+MOCK = False
 MOCK_BUFFER = [
     (342, 3183),
     (346, 3192),
@@ -43,13 +44,11 @@ TITLES = [
     (2, "Godot 3? What's That?"),
 ]
 
-is_mock = False
 mock_index = 0
 ut_buffer = []
 update_run = True
 update_timer = 0
 update_thread = None
-thread_lock = threading.Lock()
 startup_date = datetime.date.today()
 count_buffer = []
 last_prediction = {
@@ -65,6 +64,15 @@ with open("index.mustache") as f:
     template = f.read()
 
 #==========================================================
+
+def write_cgbuffer():
+    r = "========================================\n"
+    for cg in count_buffer:
+        r += " {:4d} vs {:4d}".format(*cg) + "\n"
+    r += "========================================\n"
+
+    with open("cgbuffer.txt", "a") as f:
+        f.write(r)
 
 def fmt_time(seconds):
     result = seconds
@@ -145,7 +153,7 @@ def create_app():
         print("===================================")
 
         timestamp = datetime.datetime.utcfromtimestamp(time.time())
-        if is_mock:
+        if MOCK:
             print("Mock")
             milestone = {"open_issues": MOCK_BUFFER[mock_index][0], "closed_issues": MOCK_BUFFER[mock_index][1]}
             mock_index += 1
@@ -159,6 +167,7 @@ def create_app():
 
         count_buffer.append(issue_count)
         if len(count_buffer) > MAX_COUNT:
+            write_cgbuffer()
             count_buffer.pop(0)
 
         print("Buffer size: {}".format(len(count_buffer)))
