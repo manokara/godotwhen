@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import pystache as mustache
 from urllib.request import urlopen
 import flask
@@ -13,8 +13,11 @@ HOUR = 60*MINUTE
 DAY = HOUR*24
 POOL_TIME = 6*HOUR
 INFINITY = "∞"
-API_URL = "https://api.github.com/repos/godotengine/godot/milestones/4"
 DATE_FORMAT = "%B %d %Y"
+
+GODOTVER = "4.0"
+MILESTONE = 9
+API_URL = "https://api.github.com/repos/godotengine/godot/milestones/{}".format(MILESTONE)
 MAX_COUNT = 4
 MOCK = False
 MOCK_BUFFER = [
@@ -32,15 +35,15 @@ MOODS = [
 ]
 # First index is mood
 TITLES = [
-    (0, "When Will Godot 3 Release?"),
-    (0, "Godot 3?"),
+    (0, "When Will Godot {} Release?"),
+    (0, "Godot {}?"),
     (0, "How Long To Wait For Godot?"),
-    (1, "GIVE ME GODOT 3!!!11"),
-    (1, "GODOT. 3. WHEN."),
-    (1, "I Want Godot 3!"),
-    (2, "Will Godot 3 Ever Be Finished?"),
-    (2, "I Think Godot 3 Is An Illusion"),
-    (2, "Godot 3? What's That?"),
+    (1, "GIVE ME GODOT {}!!!11"),
+    (1, "GODOT. {}. WHEN."),
+    (1, "I Want Godot {}!"),
+    (2, "Will Godot {} Ever Be Finished?"),
+    (2, "I Think Godot {} Is An Illusion"),
+    (2, "Godot {}? What's That?"),
 ]
 
 mock_index = 0
@@ -90,7 +93,7 @@ def fmt_time(seconds):
     if result == 1:
         unit = unit[0:-1]
 
-    return "{} {}".format(result, unit) 
+    return "{} {}".format(result, unit)
 
 def get_milestone_data():
     try:
@@ -118,7 +121,7 @@ def calculate_time():
     else: predict = 0
     print("Diffs: {}, {}, {}".format(openclose, openi, closedi))
     print("Time: {}".format(fmt_time(predict)))
-    
+
     if predict > 0:
         date = last_prediction["timestamp"]+datetime.timedelta(seconds=predict)
         date = date.strftime(DATE_FORMAT)
@@ -186,6 +189,9 @@ def create_app():
         mood = MOODS[title[0]]
         title = title[1]
 
+        if "{}" in title:
+            title = title.format(GODOTVER)
+
         ctx = {
             "mood": mood,
             "title": title,
@@ -193,7 +199,8 @@ def create_app():
             "open_issues": last_prediction["issue_count"][0],
             "closed_issues": last_prediction["issue_count"][1],
             "predict": last_prediction["predict"],
-            "date": last_prediction["date"]
+            "date": last_prediction["date"],
+            "version": GODOTVER,
         }
 
         return mustache.render(template, ctx)
