@@ -7,6 +7,25 @@ from random import random
 import time
 import datetime
 import threading
+import os
+import sys
+
+def get_port():
+    try:
+        port = int(os.environ["PORT"])
+
+        if port > 0xFFFF:
+            raise ValueError
+
+        if port < 0:
+            raise ValueError
+
+        return port
+    except (KeyError, ValueError):
+        return 5000
+
+def eprint(s):
+    sys.stderr.write(s + "\n")
 
 MINUTE = 60
 HOUR = 60*MINUTE
@@ -15,6 +34,7 @@ POOL_TIME = 6*HOUR
 INFINITY = "∞"
 DATE_FORMAT = "%B %d %Y"
 
+PORT = get_port()
 GODOTVER = "4.0"
 MILESTONE = 9
 API_URL = "https://api.github.com/repos/godotengine/godot/milestones/{}".format(MILESTONE)
@@ -217,7 +237,12 @@ def create_app():
 
 print("Buffer capacity: {}".format(MAX_COUNT))
 print("Interval: {}".format(fmt_time(POOL_TIME)))
-create_app().run()
-print("Finished run")
-update_run = False
-update_thread.join()
+
+try:
+    create_app().run(host="0.0.0.0", port=PORT)
+    print("Finished run")
+except PermissionError:
+    eprint("ERROR: Permission denied while binding to port {}".format(PORT))
+finally:
+    update_run = False
+    update_thread.join()
