@@ -86,16 +86,6 @@ with open("index.mustache") as f:
     template = f.read()
 
 
-def write_cgbuffer():
-    r = "========================================\n"
-    for cg in count_buffer:
-        r += " {:4d} vs {:4d}".format(*cg) + "\n"
-    r += "========================================\n"
-
-    with open("cgbuffer.txt", "a") as f:
-        f.write(r)
-
-
 def fmt_time(seconds):
     result = seconds
     lt = [60, 60, 24, 30]
@@ -206,11 +196,11 @@ def create_app():
             database.store_count(*issue_count)
 
         if len(count_buffer) > MAX_COUNT:
-            write_cgbuffer()
             count_buffer.pop(0)
 
         print("Buffer size: {}".format(len(count_buffer)))
         last_prediction["timestamp"] = timestamp
+
         if len(count_buffer) >= 2:
             calculate_time()
 
